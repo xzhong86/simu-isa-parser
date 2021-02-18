@@ -31,6 +31,7 @@ rule
   inst_block_list
     : inst_block_list inst_block
     | inst_block
+    | CLASS '(' id ')' ';'               { isa_hook(:set_class, [ val[2] ]) }
 
   inst_block
     : inst_block_leading c_stat_block    { isa_hook(:end_c_block, [ val[1] ]) }
@@ -57,6 +58,7 @@ rule
 
   c_stat_single
     : if_stat | for_stat | while_stat
+    | type_list id ';'               { val.reduce(:+) }
     | expr ';'                       { val.reduce(:+) }
     | ';'
 
@@ -77,20 +79,25 @@ rule
     | expr
 
   expr
-    : id
-    | func_call
-    | assg_expr
+    : assg_expr
     | expr op_bin expr           { val.reduce(:+) }
     | expr '?' expr ':' expr     { val.reduce(:+) }
     | op_incr id                 { val.reduce(:+) }
     | id op_incr                 { val.reduce(:+) }
+    | id '[' expr ']'            { val.reduce(:+) }
+    | func_call
     | '(' expr ')'               { val.reduce(:+) }
-    | literal_const
+    | id | literal_const
 
   assg_expr
     : id op_assg expr                { val.reduce(:+) }
     | id '[' expr ']' op_assg expr   { val.reduce(:+) }
+    | type_list id op_assg expr      { val.join(' ') }
 
+  type_list
+    : type_list type_const       { val.join(' ') }
+    | type_list id               { val.join(' ') }
+    | type_const | id
 
   func_call
     : id '(' expr_list ')'   { p lineno; val.reduce(:+) }

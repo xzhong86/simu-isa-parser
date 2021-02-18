@@ -13,9 +13,9 @@ class ISADefParser < Racc::Parser
 
   def setup_isa_regexp
     @isa_top_keyword    = %w[ INST_CLASS INST ]
-    @isa_block_keyword  = %w[ DECODE EXECUTE DISASM ]
+    @isa_block_keyword  = %w[ CLASS DECODE EXECUTE DISASM ]
     @isa_state = :top # :isa_arg :isa_block, :c_block
-    regexp = Regexp.new (@isa_top_keyword + @isa_block_keyword).join('|')
+    regexp = Regexp.new '(' + (@isa_top_keyword + @isa_block_keyword).join('|') + ')\b'
     action = proc do |text|
       if @isa_top_keyword.include? text
         @isa_state = :isa_arg
@@ -61,8 +61,8 @@ class ISADefParser < Racc::Parser
     op_2char = %w[ || && == != <= >= ++ -- -> *= /= %= += -= &= |= ^= >> << ]
     op_1char = %w[ + - * / % > < | & ^ ! ~ = ]
 
-    @regexp_c_keywords = Regexp.new(c_keywords.join('|'))
-    @regexp_c_types = Regexp.new((c_std_types + c_ext_types).join('|'))
+    @regexp_c_keywords = Regexp.new('(' + c_keywords.join('|') + ')\b')
+    @regexp_c_types    = Regexp.new('(' + (c_std_types + c_ext_types).join('|') + ')\b')
     c_ops = (op_3char + op_2char + op_1char).map{ |op| op.gsub(/([*+|?^$])/, 'XX\1').gsub('XX', '\\') }
     @regexp_c_ops = Regexp.new(c_ops.join('|'))
     @c_op_types = Hash.new(:op_bin)
@@ -102,42 +102,44 @@ class ISADefParser < Racc::Parser
     token = 
       case
       when text = @ss.scan(@isa_regexp_action.regexp)
-        hook_token text, @isa_regexp_action.action.call(text)
+        @isa_regexp_action.action.call(text)
 
       # example 0101<2.op2><5.rs>11001<3.func>11100
       when @isa_state == :isa_arg && text = @ss.scan(/([01]+|<\d+\.\w+>)+/)
-        hook_token text, [ :bin_str, text ]
+        [ :bin_str, text ]
 
-      when text = @ss.scan(@regexp_c_keywords)  then hook_token text, [ text.upcase.to_sym, text ]
+      when text = @ss.scan(@regexp_c_keywords)  then [ text.upcase.to_sym, text ]
 
-      when text = @ss.scan(@regexp_c_types)     then hook_token text, [ :type_const, text]
+      when text = @ss.scan(@regexp_c_types)     then [ :type_const, text]
 
-      when text = @ss.scan(/\/\/.*\n?/)         then hook_token text, [ :comment, text ]
-      when text = @ss.scan(/\/\*.*\*\//)        then hook_token text, [ :comment, text ]
-      when text = @ss.scan(/\n/)                then hook_token text, [ :newline, text ]
-      when text = @ss.scan(/\s+/)               then hook_token text, [ :blank, text ]
+      when text = @ss.scan(/\/\/[^\n]*/)        then [ :comment, text ]
+      when text = @ss.scan(/\/\*.*\*\//)        then [ :comment, text ]
+      when text = @ss.scan(/\n/)                then [ :newline, text ]
+      when text = @ss.scan(/\s+/)               then [ :blank, text ]
 
-      when text = @ss.scan(@regexp_c_ops)       then hook_token text, [ @c_op_types[text], text ]
+      when text = @ss.scan(@regexp_c_ops)       then [ @c_op_types[text], text ]
 
-      when text = @ss.scan(/[;,?:(){}\[\]]/)    then hook_token text, [ text, text ]
+      when text = @ss.scan(/[;,?:(){}\[\]]/)    then [ text, text ]
 
-      when text = @ss.scan(/\d+|0[xX]\h+|0[bB][01]+/)   then hook_token text, [ :literal_int, text ]
-      when text = @ss.scan(/\d+\.\d+/)                  then hook_token text, [ :literal_float, text ]
-      when text = @ss.scan(/'.'/)                       then hook_token text, [ :literal_char, text ]
-      when text = @ss.scan(/"(\\\"|[^"])*"/)            then hook_token text, [ :literal_string, text ]
-      when text = @ss.scan(/[_a-zA-Z]\w*/)              then hook_token text, [ :id, text ]
+      when text = @ss.scan(/0[xX]\h+|0[bB][01]+|\d+/)   then [ :literal_int, text ]
+      when text = @ss.scan(/\d+\.\d+/)                  then [ :literal_float, text ]
+      when text = @ss.scan(/'.'/)                       then [ :literal_char, text ]
+      when text = @ss.scan(/"(\\\"|[^"])*"/)            then [ :literal_string, text ]
+      when text = @ss.scan(/[_a-zA-Z]\w*/)              then [ :id, text ]
 
       else
         text = @ss.string[@ss.pos .. -1]
         raise  ScanError, "can not match: '" + text + "'"
       end
-    token
+    [ token, text ]
   end  # def _next_token
   def next_token
-    return if @ss.eos?
-    # skips empty actions
-    until token = _next_token or @ss.eos?; end
-    token
+    while not @ss.eos?
+      token, text = _next_token
+      token = hook_token(text, token)
+      return token if token
+    end
+    nil
   end
 
 end

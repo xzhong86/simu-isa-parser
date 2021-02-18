@@ -16,9 +16,9 @@ class ISAInstInfo
     end
     @c_codes[type] = code
   end
-  def decode_code()      @c_codes[:DECODE] end
-  def execute_code()     @c_codes[:EXECUTE] end
-  def disasm_code()      @c_codes[:DISASM] end
+  def decode_code()      @c_codes['DECODE'] end
+  def execute_code()     @c_codes['EXECUTE'] end
+  def disasm_code()      @c_codes['DISASM'] end
 end
 
 class ISAHooker
@@ -39,6 +39,9 @@ class ISAHooker
   def end_isa_block(args)
     inst = @curr_inst
     puts "Inst #{inst.name}(#{inst.type}) is defined."
+    puts "  DECODE: '#{inst.decode_code}'" if inst.decode_code
+    puts "  EXECUTE: '#{inst.execute_code}'" if inst.execute_code
+    puts "  DISASM: '#{inst.decode_code}'" if inst.disasm_code
     @curr_inst = nil
   end
   def start_c_block(args)
