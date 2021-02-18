@@ -11,6 +11,38 @@ class ISADefParser
   options no_result_var
 
 rule
+  isa_def : isa_stmt_list
+
+  isa_stmt_list
+    : isa_stmt_list isa_stmt
+    | isa_stmt
+
+  isa_stmt
+    : isa_stmt_leading isa_block           { isa_hook(:end_isa_block, []) }
+
+  isa_stmt_leading
+    : INST_CLASS '(' id ',' bin_str ')'    { isa_hook(:start_isa_block, [ val[0], val[2], val[4] ]) }
+    | INST '(' id ',' bin_str ')'          { isa_hook(:start_isa_block, [ val[0], val[2], val[4] ]) }
+    | INST '(' id ')'                      { isa_hook(:start_isa_block, [ val[0], val[2] ]) }
+
+  isa_block
+    : '{' inst_block_list '}'
+
+  inst_block_list
+    : inst_block_list inst_block
+    | inst_block
+
+  inst_block
+    : inst_block_leading c_stat_block    { isa_hook(:end_c_block, [ val[1] ]) }
+
+  inst_block_leading
+    : DECODE  '(' ')'                    { isa_hook(:start_c_block, [ val[0] ]) }
+    | EXECUTE '(' ')'                    { isa_hook(:start_c_block, [ val[0] ]) }
+    | DISASM  '(' ')'                    { isa_hook(:start_c_block, [ val[0] ]) }
+
+
+# ------------------ Simple C Language Rules ------------------
+
   c_stat
     : c_stat_block
     | c_stat_single

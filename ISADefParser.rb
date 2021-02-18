@@ -6,7 +6,12 @@ class ISADefParser < Racc::Parser
 
   def parse(str)
     scan_setup(str)
-    do_parse
+    begin
+      do_parse
+    ensure
+      puts "parsing failed at #{filename}:#{lineno}"
+      raise
+    end
   end
 
   def load_file( filename )
@@ -17,8 +22,10 @@ class ISADefParser < Racc::Parser
   end
 
   def scan_file( filename )
-    load_file(filename)
-    do_parse
+    @filename = filename
+    File.open(filename, "r") do |f|
+      parse(f.read)
+    end
   end
 
 end
