@@ -9,7 +9,7 @@ class ISADefParser < Racc::Parser
     begin
       do_parse
     ensure
-      puts "parsing failed at #{filename}:#{lineno}"
+      puts "parsing failed at #{filename}:#{lineno} #{curr_line}"
       raise
     end
   end

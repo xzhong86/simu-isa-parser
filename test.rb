@@ -56,7 +56,9 @@ $hook = ISAHooker.new
 $parser = ISADefParser.new
 
 $parser.set_isa_hook() do |action, args|
-  $hook.method(action).call(args)
+  if $hook.methods.include? action
+    $hook.method(action).call(args)
+  end
 end
 
 $parser.scan_file('../op-01-rv32i.def')

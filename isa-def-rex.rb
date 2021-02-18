@@ -8,6 +8,7 @@ class ISADefParser < Racc::Parser
 
   attr_reader   :lineno
   attr_reader   :filename
+  attr_reader   :curr_line
   attr_accessor :state
 
   def setup_isa_regexp
@@ -44,7 +45,7 @@ class ISADefParser < Racc::Parser
       @isa_state = :isa_block
 
     else
-      fail
+      ;
     end
     @isa_hook.call(action, args) if @isa_hook
   end
@@ -74,8 +75,24 @@ class ISADefParser < Racc::Parser
     setup_isa_regexp if not @isa_regexp_action
     @ss = StringScanner.new(str)
     @lineno =  1
+    @curr_line = ""
     @state  = nil
   end
+
+  def hook_token(text, token)
+    type = token[0]
+    if type != :newline
+      @curr_line += text
+    else
+      @curr_line = ""
+    end
+    isa_hook(:any_token, [ text, token ])
+    if type == :comment or type == :blank or type == :newline
+      token = nil
+    end
+    token
+  end
+
   def _next_token
     text = @ss.peek(1)
     @lineno  +=  1  if text == "\n"
@@ -85,41 +102,30 @@ class ISADefParser < Racc::Parser
     token = 
       case
       when text = @ss.scan(@isa_regexp_action.regexp)
-        @isa_regexp_action.action.call(text)
+        hook_token text, @isa_regexp_action.action.call(text)
 
       # example 0101<2.op2><5.rs>11001<3.func>11100
       when @isa_state == :isa_arg && text = @ss.scan(/([01]+|<\d+\.\w+>)+/)
-        [ :bin_str, text ]
+        hook_token text, [ :bin_str, text ]
 
-      when text = @ss.scan(@regexp_c_keywords)
-        [ text.upcase.to_sym, text ]
+      when text = @ss.scan(@regexp_c_keywords)  then hook_token text, [ text.upcase.to_sym, text ]
 
-      when text = @ss.scan(@regexp_c_types)
-        [ :type_const, text]
+      when text = @ss.scan(@regexp_c_types)     then hook_token text, [ :type_const, text]
 
-      when text = @ss.scan(/\/\/.*\n?/)
-        nil #[ :comment, text ]
-      when text = @ss.scan(/\/\*.*\*\//)
-        nil #[ :comment, text ]
-      when text = @ss.scan(/\s+/)
-        nil #[ :blank, text ]
+      when text = @ss.scan(/\/\/.*\n?/)         then hook_token text, [ :comment, text ]
+      when text = @ss.scan(/\/\*.*\*\//)        then hook_token text, [ :comment, text ]
+      when text = @ss.scan(/\n/)                then hook_token text, [ :newline, text ]
+      when text = @ss.scan(/\s+/)               then hook_token text, [ :blank, text ]
 
-      when text = @ss.scan(@regexp_c_ops)
-        [ @c_op_types[text], text ]
+      when text = @ss.scan(@regexp_c_ops)       then hook_token text, [ @c_op_types[text], text ]
 
-      when text = @ss.scan(/[;,?:(){}\[\]]/)
-        [ text, text ]
+      when text = @ss.scan(/[;,?:(){}\[\]]/)    then hook_token text, [ text, text ]
 
-      when text = @ss.scan(/\d+|0[xX]\h+|0[bB][01]+/)
-        [ :literal_int, text ]
-      when text = @ss.scan(/\d+\.\d+/)
-        [ :literal_float, text ]
-      when text = @ss.scan(/'.'/)
-        [ :literal_char, text ]
-      when text = @ss.scan(/"(\\\"|[^"])*"/)
-        [ :literal_string, text ]
-      when text = @ss.scan(/[_a-zA-Z]\w*/)
-        [ :id, text ]
+      when text = @ss.scan(/\d+|0[xX]\h+|0[bB][01]+/)   then hook_token text, [ :literal_int, text ]
+      when text = @ss.scan(/\d+\.\d+/)                  then hook_token text, [ :literal_float, text ]
+      when text = @ss.scan(/'.'/)                       then hook_token text, [ :literal_char, text ]
+      when text = @ss.scan(/"(\\\"|[^"])*"/)            then hook_token text, [ :literal_string, text ]
+      when text = @ss.scan(/[_a-zA-Z]\w*/)              then hook_token text, [ :id, text ]
 
       else
         text = @ss.string[@ss.pos .. -1]
