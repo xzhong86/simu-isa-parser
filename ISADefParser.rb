@@ -8,7 +8,7 @@ class ISADefParser < Racc::Parser
     scan_setup(str)
     begin
       do_parse
-    ensure
+    rescue
       puts "parsing failed at #{filename}:#{lineno} #{curr_line}"
       raise
     end

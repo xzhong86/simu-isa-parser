@@ -68,6 +68,7 @@ class ISADefParser < Racc::Parser
     @c_op_types = Hash.new(:op_bin)
     @c_op_types.merge! %w[ >>= <<= *= /= %= += -= &= |= ^= = ].map{ |op| [ op, :op_assg ] }.to_h
     @c_op_types.merge! %w[ ++ -- ].map{ |op| [ op, :op_incr ] }.to_h
+    @c_op_types.merge! %w[ * & - ].map{ |op| [ op, :op_2_1 ] }.to_h
   end
 
   def scan_setup(str)

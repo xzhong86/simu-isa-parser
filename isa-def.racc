@@ -5,8 +5,7 @@ class ISADefParser
     nonassoc UMINUS
     left op_assg
     left op_bin
-#    left '*' '/'
-#    left '+' '-'
+    left op_2_1
   preclow
   options no_result_var
 
@@ -51,6 +50,7 @@ rule
   c_stat_block :
     : '{' c_stat_block '}'    { val.reduce(:+) }
     | '{' c_stat_list '}'     { val.reduce(:+) }
+    | '{' '}'                 { val.reduce(:+) }
 
   c_stat_list
     : c_stat_list c_stat      { val.reduce(:+) }
@@ -58,7 +58,7 @@ rule
 
   c_stat_single
     : if_stat | for_stat | while_stat
-    | type_list id ';'               { val.reduce(:+) }
+    | type_list id ';'               { val[0] + ' ' + val[1] + ';' }
     | expr ';'                       { val.reduce(:+) }
     | ';'
 
@@ -81,9 +81,11 @@ rule
   expr
     : assg_expr
     | expr op_bin expr           { val.reduce(:+) }
+    | expr op_2_1 expr           { val.reduce(:+) }
     | expr '?' expr ':' expr     { val.reduce(:+) }
     | op_incr id                 { val.reduce(:+) }
     | id op_incr                 { val.reduce(:+) }
+    | op_2_1 expr =UMINUS        { val.reduce(:+) }
     | id '[' expr ']'            { val.reduce(:+) }
     | func_call
     | '(' expr ')'               { val.reduce(:+) }
@@ -100,7 +102,7 @@ rule
     | type_const | id
 
   func_call
-    : id '(' expr_list ')'   { p lineno; val.reduce(:+) }
+    : id '(' expr_list ')'   { isa_hook(:call_func, [ val[0] ]); val.reduce(:+) }
 
 #  id_list
 #    : id_list ',' id       { val.reduce(:+) }
