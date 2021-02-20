@@ -109,6 +109,9 @@ class ISADefParser < Racc::Parser
       when @isa_state == :isa_arg && text = @ss.scan(/([01]+|<\d+\.\w+>)+/)
         [ :bin_str, text ]
 
+      when @isa_state == :isa_arg && text = @ss.scan(/\w[\w\.\-]*/)
+        [ :ex_id, text ]
+
       when text = @ss.scan(@regexp_c_keywords)  then [ text.upcase.to_sym, text ]
 
       when text = @ss.scan(@regexp_c_types)     then [ :type_const, text]
