@@ -72,6 +72,7 @@ class ISAParser
     def mask_val()      bit_str({ '0' => '1', 'x' => '0' }).to_i(2) end
     def match_val()     bit_str({ '0' => '0', 'x' => '0' }).to_i(2) end
 
+    def c_name()        @name.gsub(/[-.]/, '_') end
     def set_c_code(type, code)
       if @c_codes[type]
         fail
