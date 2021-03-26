@@ -2,7 +2,7 @@
 require_relative 'ISADefParser'
 
 class Integer
-  def to_str(fmt)
+  def fmt_str(fmt)
     sprintf(fmt, self)
   end
 end
@@ -155,8 +155,8 @@ class ISAParser
   end
   def print_inst(inst)
     bit_str = inst.bit_str
-    msk_str = inst.mask_val.to_str "%08x"
-    val_str = inst.match_val.to_str "%08x"
+    msk_str = inst.mask_val.fmt_str "%08x"
+    val_str = inst.match_val.fmt_str "%08x"
     name = "%-8s" % [ inst.name ]
     puts "#{inst.type} #{name} #{msk_str} #{val_str} #{inst.bin_str}"
     #puts "  DECODE: '#{inst.decode_code}'" if inst.decode_code
